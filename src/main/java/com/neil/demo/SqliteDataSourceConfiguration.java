@@ -1,20 +1,32 @@
 package com.neil.demo;
-import java.util.List;
-
+import javax.persistence.EntityManagerFactory;
 import javax.sql.DataSource;
 
-import com.neil.demo.repository.sqlite.ConfigurationRepository;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.jdbc.DataSourceBuilder;
 import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Primary;
+import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
+import org.springframework.orm.jpa.JpaTransactionManager;
+import org.springframework.orm.jpa.JpaVendorAdapter;
+import org.springframework.orm.jpa.LocalContainerEntityManagerFactoryBean;
+import org.springframework.orm.jpa.vendor.HibernateJpaVendorAdapter;
+import org.springframework.transaction.annotation.EnableTransactionManagement;
 import org.sqlite.SQLiteDataSource;
 
-@org.springframework.context.annotation.Configuration
+@Configuration
+@EnableJpaRepositories(
+    basePackages = "com.neil.demo.repository.sqlite",
+    transactionManagerRef = "sqliteTransactionManager",
+    entityManagerFactoryRef = "sqliteEntityManagerFactoryBean"
+)
+@EnableTransactionManagement
 public class SqliteDataSourceConfiguration {
 
     @Bean(destroyMethod = "", name = "sqliteDataSource")
-    @Primary
+
     public DataSource sqliteDataSource() {
         DataSourceBuilder dataSourceBuilder = DataSourceBuilder.create();
         dataSourceBuilder.driverClassName("org.sqlite.JDBC");
@@ -23,22 +35,30 @@ public class SqliteDataSourceConfiguration {
         return dataSourceBuilder.build();
     }
 
-    // @Bean(destroyMethod = "", name = "primaryataSource")
-    // public DataSource primaryataSource() {
-    //     List<com.neil.demo.entity.sqlite.Configuration> all = configurationRepository.findAll();
-    //     DataSourceBuilder dataSourceBuilder = DataSourceBuilder.create();
-    //     for (com.neil.demo.entity.sqlite.Configuration configuration : all) {
-    //         if ("username".equals(configuration.getKey())) {
-    //             dataSourceBuilder.username(configuration.getValue());
-    //         }
-    //         if ("password".equals(configuration.getKey())) {
-    //             dataSourceBuilder.password(configuration.getValue());
-    //         }
-    //         if ("type".equals(configuration.getKey())) {
-    //             // dataSourceBuilder.type(DataSource.class);
-    //             dataSourceBuilder.url("jdbc:mysql://localhost:3306/test");
-    //         }
-    //     }
-    //     return dataSourceBuilder.build();
-    // }
+    @Autowired
+    @Bean
+    public JpaTransactionManager sqliteTransactionManager(@Qualifier(value = "sqliteDataSource") DataSource dataSource,
+                                                          @Qualifier(value = "sqliteEntityManagerFactoryBean") EntityManagerFactory entityManagerFactory) {
+        JpaTransactionManager jpaTransactionManager
+            = new JpaTransactionManager();
+        jpaTransactionManager.setEntityManagerFactory(entityManagerFactory);
+        jpaTransactionManager.setDataSource(dataSource);
+        return jpaTransactionManager;
+    }
+
+    @Autowired
+    @Bean
+    @Primary
+    LocalContainerEntityManagerFactoryBean sqliteEntityManagerFactoryBean(@Qualifier(value = "sqliteDataSource") DataSource dataSource) {
+        LocalContainerEntityManagerFactoryBean localContainerEntityManagerFactoryBean
+            = new LocalContainerEntityManagerFactoryBean();
+        localContainerEntityManagerFactoryBean.setDataSource(dataSource);
+        localContainerEntityManagerFactoryBean.setPackagesToScan("com.neil.demo.entity.sqlite");
+        HibernateJpaVendorAdapter hibernateJpaVendorAdapter = new HibernateJpaVendorAdapter();
+        hibernateJpaVendorAdapter.setGenerateDdl(true);
+        hibernateJpaVendorAdapter.setShowSql(true);
+        hibernateJpaVendorAdapter.setDatabasePlatform("com.enigmabridge.hibernate.dialect.SQLiteDialect");
+        localContainerEntityManagerFactoryBean.setJpaVendorAdapter(hibernateJpaVendorAdapter);
+        return localContainerEntityManagerFactoryBean;
+    }
 }

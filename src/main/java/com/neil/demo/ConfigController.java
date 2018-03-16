@@ -10,7 +10,8 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RestController;
 
-@RestController("config")
+@RestController
+@RequestMapping(value = "config")
 public class ConfigController {
 
     @Autowired
@@ -28,6 +29,7 @@ public class ConfigController {
     @RequestMapping(value = "query", method = RequestMethod.GET)
     public String query() {
         List<Configuration> configurations = configurationRepository.findAll();
+        int a = 1 / 0;
         return JSON.toJSON(configurations).toString();
     }
 
